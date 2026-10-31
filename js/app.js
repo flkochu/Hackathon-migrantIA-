@@ -256,6 +256,16 @@
 
   // Lee la etiqueta [[NIVEL:ROJO|CASO:medica]] que pide el prompt
   function parseMeta(text) {
+    // Formato del Filtro: mensaje + "---" + Etiquetas / Urgencia / Fuentes / Requiere revisión humana / Ficha
+    const sep = text.lastIndexOf("\n---");
+    if (sep !== -1) {
+      const body = text.slice(0, sep).trim(), tail = text.slice(sep + 4);
+      const norm = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      const u = tail.match(/^\s*urgencia\s*:\s*(.+)$/im), f = tail.match(/^\s*fuentes\s*:\s*(.+)$/im);
+      const level = u ? ({ critica: "ROJO", prioritaria: "AMARILLO", ordinaria: "VERDE" }[norm(u[1])] || null) : null;
+      const src = f && !/^sin fuente/i.test(f[1].trim()) ? "\nBase legal: " + f[1].trim() : "";
+      if (level || f) return { text: body + src, level, caso: null };
+    }
     const m = text.match(/\[\[\s*NIVEL\s*:\s*(ROJO|NARANJA|AMARILLO|VERDE)\s*(?:\|\s*CASO\s*:\s*([a-zñ]+))?\s*\]\]/i);
     if (!m) return { text: text.trim(), level: null, caso: null };
     return { text: text.replace(m[0], "").trim(), level: m[1].toUpperCase(), caso: m[2] ? m[2].toLowerCase() : null };
