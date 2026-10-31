@@ -18,7 +18,7 @@ window.MIGRANTIA_CONFIG = {
   },
 
   // Tiempo máximo de espera de la respuesta del agente (ms)
-  TIMEOUT_MS: 45000,
+  TIMEOUT_MS: 120000,
 
   // Si el webhook falla (CORS, caído, sin internet), mostrar la guía offline
   FALLBACK_OFFLINE: true,
@@ -28,5 +28,5 @@ window.MIGRANTIA_CONFIG = {
 
   // Cabeceras extra (por ejemplo, si Saptiva les da un token):
   // EXTRA_HEADERS: { "Authorization": "Bearer xxx" },
-  EXTRA_HEADERS: {},
+  EXTRA_HEADERS: { "Authorization": "Bearer bwhsec_f66X9yM3HXjbcJKHlaiPMNlnSvtgXeoGWtmfNIKI0" },
 };
