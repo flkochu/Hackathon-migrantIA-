@@ -2,7 +2,7 @@
 
 **Orientación consular de emergencia para personas mexicanas en EE. UU.** · Hackathon de IA para el Bien Común · IBERO CDMX × Saptiva AI · Reto: *IA para Personas Migrantes*
 
-Una página web ligera (sin frameworks, funciona en celulares baratos) conectada a un agente de **Saptiva Studio** que:
+Un servidor **Node.js** ligero que sirve una página web sin frameworks (funciona en celulares baratos) y la conecta con un agente de **Saptiva Studio**. La página ofrece:
 
 - 🔴 **Botón de EMERGENCIA**: llama con un toque al 911, al CIAM (consulado, 24 h), a la línea de violencia doméstica, a la línea contra la trata, al 211 y al 988.
 - 🌎 **Tres idiomas**: Español, English y Português. El agente responde en el idioma elegido.
@@ -12,46 +12,97 @@ Una página web ligera (sin frameworks, funciona en celulares baratos) conectada
 - 🚪 **Salida rápida**: borra la conversación y te saca de la página (botón, o Esc dos veces), pensado para víctimas cuyo agresor revisa el teléfono.
 - 🚦 **Triage**: el agente clasifica el riesgo (ROJO, NARANJA, AMARILLO o VERDE) y la página muestra una alerta de color.
 - 📴 **Modo sin conexión**: si el agente no responde, la página muestra la guía del caso de todos modos.
-- 🔒 **Privacidad**: no guarda mensajes, no usa cookies ni rastreadores, y pide solo ciudad y estado.
+- 🔒 **Privacidad**: no guarda mensajes, no usa cookies ni rastreadores, y pide solo ciudad y estado. El servidor tampoco registra el texto de los mensajes.
+
+### ¿Por qué un servidor y no una página estática?
+
+- 🔑 **El token del webhook queda en el servidor.** En la versión estática viajaba en `js/config.js` y cualquier visitante podía leerlo.
+- 🌐 **Sin problemas de CORS.** El navegador solo habla con su propio servidor (`/api/chat`); el servidor llama a Saptiva.
+- 🛡️ **Protección del agente:** valida los mensajes, limita peticiones por IP y cancela la corrida si la persona cierra la página.
 
 ## Estructura
 
 ```
-index.html                 ← página
-css/styles.css             ← estilos
-js/config.js               ← ⚙️ URL del webhook de Saptiva (lo único que hay que editar)
-js/data.js                 ← consulados, líneas de ayuda y guía de los 5 casos
-js/i18n.js                 ← textos ES / EN / PT
-js/icons.js                ← pictogramas SVG
-js/app.js                  ← lógica, chat y conexión con el webhook
+server.js                  ← arranque del servidor (lee .env)
+src/app.js                 ← rutas: página estática, POST /api/chat, /healthz
+src/agent.js               ← arma el mensaje, llama al webhook y lee la respuesta
+src/sse.js                 ← lector del stream SSE que devuelve Saptiva
+src/catalog.js             ← idiomas, estados y casos (los toma de public/js)
+src/config.js              ← variables de entorno
+src/rate-limit.js          ← límite de peticiones por IP
+public/index.html          ← página
+public/css/styles.css      ← estilos
+public/js/config.js        ← ajustes del navegador (sin secretos)
+public/js/data.js          ← consulados, líneas de ayuda y guía de los 5 casos
+public/js/i18n.js          ← textos ES / EN / PT
+public/js/icons.js         ← pictogramas SVG
+public/js/app.js           ← lógica de la página y chat
+test/                      ← pruebas (node --test)
 prompt/agente-saptiva.md   ← 🧠 prompt de sistema para el agente en Saptiva Studio
-scripts/probar-webhook.*   ← prueba del webhook y de CORS (bash / PowerShell)
+scripts/probar-webhook.*   ← prueba directa del webhook (bash / PowerShell)
+.env.example               ← ⚙️ plantilla de configuración (cópiala a .env)
 ```
 
-## Publicar en GitHub Pages (5 minutos)
+## Correr en local
 
-1. Crea un repositorio **público** en GitHub, por ejemplo `migrantia`.
-2. Sube todos estos archivos a la raíz del repositorio. Puedes arrastrarlos en *Add file → Upload files*, o usar la terminal:
-   ```bash
-   git init && git add . && git commit -m "MigrantIA"
-   git branch -M main
-   git remote add origin https://github.com/TU-USUARIO/migrantia.git
-   git push -u origin main
-   ```
-3. En el repositorio entra a **Settings → Pages → Build and deployment**, elige **Deploy from a branch**, luego **main** y **/ (root)**, y pulsa **Save**.
-4. En 1 o 2 minutos queda en `https://TU-USUARIO.github.io/migrantia/`.
+Necesitas **Node.js 20.12 o más reciente** (recomendado 22).
 
-Puedes abrir la página directamente en un idioma con `?lang=en` o `?lang=pt`.
+```bash
+npm install
+cp .env.example .env      # y reemplaza WEBHOOK_URL y WEBHOOK_TOKEN por los reales
+npm start                 # http://localhost:3000
+```
+
+- `npm run dev` reinicia el servidor cada vez que guardas un archivo.
+- `npm test` corre las pruebas.
+- Puedes abrir la página directamente en un idioma con `?lang=en` o `?lang=pt`.
+
+> ⚠️ El archivo `.env` tiene el token: está en `.gitignore` y **nunca** se sube al repositorio.
+
+## Publicar
+
+Cualquier servicio que corra Node o Docker sirve (Render, Railway, Fly.io, Cloud Run, una VM).
+
+1. Comando de instalación: `npm ci`. Comando de arranque: `npm start`.
+2. Configura las variables de entorno del servicio con los valores de `.env.example` (como mínimo `WEBHOOK_URL` y `WEBHOOK_TOKEN`). La plataforma suele definir `PORT` sola.
+3. Si la plataforma pone un proxy delante (casi todas), define `TRUST_PROXY=1`.
+4. El agente puede tardar 1-2 minutos en responder: elige un servicio que permita peticiones HTTP de al menos 3 minutos.
+
+Con Docker:
+
+```bash
+docker build -t migrantia .
+docker run --rm -p 3000:3000 --env-file .env migrantia
+```
 
 ## Conectar el agente de Saptiva Studio
 
 1. En Saptiva Studio crea un **agente** y pega el bloque `PROMPT` de `prompt/agente-saptiva.md` como instrucciones de sistema.
 2. Sube los 7 insumos en PDF como **base de conocimiento** del agente.
 3. Crea un **workflow** con este orden: **Webhook (entrada) → Agente → Respuesta**. Mapea el campo `message` del JSON de entrada como entrada del agente.
-4. Copia la URL del webhook en `js/config.js` → `WEBHOOK_URL` (ya está puesta la del equipo).
-5. Si tienen un agente especialista por caso, ponga cada URL en `WEBHOOKS_POR_CASO`.
+4. Copia la URL y el token del webhook en `.env` → `WEBHOOK_URL` y `WEBHOOK_TOKEN`.
+5. Si tienen un agente especialista por caso, pon cada URL en `WEBHOOK_URL_ALBERGUE`, `WEBHOOK_URL_VIOLENCIA`, `WEBHOOK_URL_MEDICA`, `WEBHOOK_URL_DETENCION` o `WEBHOOK_URL_TRATA`.
 
-### Qué envía la página
+### Qué envía la página al servidor
+
+`POST /api/chat`
+
+```json
+{
+  "text": "Mi hija tiene fiebre…",
+  "lang": "es",
+  "state": "TX",
+  "case": "medica",
+  "session_id": "mi_x7k2…",
+  "history": [{ "role": "user", "content": "…" }, { "role": "assistant", "content": "…" }]
+}
+```
+
+Respuesta: `{ "reply": "texto del agente" }`. Si algo falla, responde `{ "error": "…" }` con status 400 (mensaje inválido), 429 (demasiadas peticiones), 502 (el agente falló), 503 (falta `WEBHOOK_URL`) o 504 (el agente tardó demasiado), y la página pasa a modo sin conexión.
+
+### Qué envía el servidor al webhook
+
+Cabeceras `Authorization: Bearer <WEBHOOK_TOKEN>`, `Accept: text/event-stream` y un `Idempotency-Key` distinto por mensaje. Cuerpo:
 
 ```json
 {
@@ -68,14 +119,22 @@ Puedes abrir la página directamente en un idioma con `?lang=en` o `?lang=pt`.
 
 ### Qué acepta de vuelta
 
-Acepta un texto plano o un JSON con la respuesta en cualquiera de estas llaves (también anidadas): `output`, `response`, `answer`, `result`, `text`, `message`, `content`, `data`, `choices[0].message.content`, entre otras.
+- **Stream SSE** (lo que devuelve Saptiva Studio): espera el evento `result` y toma `outputs[].payload.output`. Si la corrida termina con un estado distinto de `completed`, responde 502.
+- **JSON o texto plano** (otros webhooks): busca la respuesta en `output`, `response`, `answer`, `result`, `text`, `message`, `content`, `data`, `choices[0].message.content`, entre otras llaves (también anidadas).
+
 Si la respuesta empieza con `[[NIVEL:ROJO|CASO:medica]]`, la página muestra la alerta de color y resalta el caso.
 
 ### Depurar
 
-- Abre la página, presiona **F12 → Console**. Verás `[MigrantIA] enviando a…` y `respuesta cruda del webhook…`.
-- Desde la consola puedes probar con `MigrantIA.test("hola")`.
-- Error **CORS** ("Failed to fetch"): el servidor de Saptiva tiene que permitir el origen `https://TU-USUARIO.github.io`. Corre `scripts/probar-webhook.sh` para verificarlo y, si falla, pídanle a los mentores de Saptiva que habiliten CORS para el webhook. Mientras tanto, la demo funciona en modo sin conexión.
+- Revisa que el servidor vea al agente: `curl http://localhost:3000/healthz` debe decir `"agent": true`.
+- Prueba el chat sin abrir la página:
+  ```bash
+  curl -X POST http://localhost:3000/api/chat -H "Content-Type: application/json" \
+    -d '{"text":"Mi hija tiene fiebre alta","lang":"es","state":"TX"}'
+  ```
+- Prueba el webhook directo, sin el servidor: `bash scripts/probar-webhook.sh` (o `scripts/probar-webhook.ps1` en Windows).
+- En el navegador, **F12 → Console** muestra `[MigrantIA] enviando a…` y `respuesta del servidor…`. Desde la consola puedes probar con `MigrantIA.test("hola")`.
+- Con `DEBUG=true` en `.env`, el servidor imprime los eventos del agente (incluyen el texto de las respuestas; solo para desarrollo).
 
 ## Los 5 casos y su fundamento
 

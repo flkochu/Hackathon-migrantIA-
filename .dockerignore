@@ -1,0 +1,9 @@
+node_modules
+.env
+.env.*
+.git
+.claude
+test
+scripts
+prompt
+*.md

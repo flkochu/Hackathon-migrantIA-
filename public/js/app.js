@@ -279,84 +279,30 @@
     b.innerHTML = `${icon(level === "ROJO" ? "siren" : "shield")}<span>${esc(t("levels")[level])}</span>${calls}`;
   }
 
-  // Extrae el texto de casi cualquier forma de respuesta JSON
-  function extractText(d, depth = 0) {
-    if (d == null || depth > 6) return "";
-    if (typeof d === "string") {
-      const s = d.trim();
-      if ((s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]"))) {
-        try { return extractText(JSON.parse(s), depth + 1) || s; } catch (e) { return s; }
-      }
-      return s;
-    }
-    if (typeof d === "number" || typeof d === "boolean") return String(d);
-    if (Array.isArray(d)) {
-      for (const x of d) { const r = extractText(x, depth + 1); if (r) return r; }
-      return "";
-    }
-    if (d.choices && d.choices[0]) {
-      const c = d.choices[0];
-      const r = extractText((c.message && c.message.content) || c.text, depth + 1);
-      if (r) return r;
-    }
-    const keys = ["output", "outputs", "response", "answer", "result", "results", "reply", "text", "content", "message", "data", "body", "final_output", "agent_response", "generated_text", "completion", "value"];
-    for (const k of keys) {
-      if (k in d) { const r = extractText(d[k], depth + 1); if (r) return r; }
-    }
-    // último recurso: el string más largo que encuentre
-    let best = "";
-    (function walk(o, lvl) {
-      if (lvl > 6 || o == null) return;
-      if (typeof o === "string") { if (o.length > best.length) best = o; return; }
-      if (typeof o === "object") Object.values(o).forEach((v) => walk(v, lvl + 1));
-    })(d, 0);
-    return best;
-  }
-
-  async function postJSON(url, payload, contentType) {
+  // Habla con el servidor Node (POST api/chat). El servidor arma el mensaje
+  // para el agente, agrega el token y llama al webhook de Saptiva Studio.
+  async function callAgent(text, caseId) {
+    const url = cfg.API_URL || "api/chat";
+    const payload = {
+      text, lang, state: stateCode || null, case: caseId || null,
+      session_id: sessionId, history: history.slice(-10),
+    };
+    if (cfg.DEBUG) console.log("[MigrantIA] enviando a", url, payload);
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), cfg.TIMEOUT_MS || 45000);
+    const timer = setTimeout(() => ctrl.abort(), cfg.TIMEOUT_MS || 180000);
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: Object.assign({ "Content-Type": contentType, Accept: "application/json, text/plain, */*" }, cfg.EXTRA_HEADERS || {}),
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(payload),
         signal: ctrl.signal,
       });
-      const raw = await res.text();
-      if (cfg.DEBUG) console.log("[MigrantIA] respuesta cruda del webhook:", res.status, raw);
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${raw.slice(0, 300)}`);
-      let data = raw;
-      try { data = JSON.parse(raw); } catch (e) {}
-      return data;
+      let data = null;
+      try { data = await res.json(); } catch (e) {}
+      if (cfg.DEBUG) console.log("[MigrantIA] respuesta del servidor:", res.status, data);
+      if (!res.ok || !data || !data.reply) throw new Error((data && data.error) || `HTTP ${res.status}`);
+      return data.reply;
     } finally { clearTimeout(timer); }
-  }
-
-  async function callAgent(text, caseId) {
-    const url = (cfg.WEBHOOKS_POR_CASO && cfg.WEBHOOKS_POR_CASO[caseId]) || cfg.WEBHOOK_URL;
-    if (!url) throw new Error("Sin WEBHOOK_URL en js/config.js");
-    const stateName = stateCode ? STATES[stateCode].name.es : "no indicado";
-    const tags = `[Idioma de respuesta: ${T[lang].langName}] [Estado: ${stateName}]` + (caseId ? ` [Caso: ${caseId}]` : "");
-    const composed = `${tags}\n${text}`;
-    const payload = {
-      message: composed, input: composed, query: composed, prompt: composed,
-      text, language: lang, idioma: T[lang].langName, state: stateCode || null, estado: stateName,
-      case: caseId || null, session_id: sessionId, history: history.slice(-10),
-    };
-    if (cfg.DEBUG) console.log("[MigrantIA] enviando a", url, payload);
-    let data;
-    try {
-      data = await postJSON(url, payload, "application/json");
-    } catch (err) {
-      // Si falla por CORS (TypeError), reintenta como "petición simple" sin preflight
-      if (err.name === "TypeError") {
-        if (cfg.DEBUG) console.warn("[MigrantIA] fallo de red/CORS, reintentando como text/plain", err);
-        data = await postJSON(url, payload, "text/plain;charset=UTF-8");
-      } else throw err;
-    }
-    const out = extractText(data);
-    if (!out) throw new Error("Respuesta vacía del agente");
-    return out;
   }
 
   function detectCase(text) {
@@ -455,5 +401,5 @@
     .observe(document.body, { childList: true, subtree: true });
 
   // Para probar desde la consola: MigrantIA.test("hola")
-  window.MigrantIA = { test: (txt) => callAgent(txt || "Hola, prueba de conexión", "").then((r) => { console.log(r); return r; }), extractText, parseMeta };
+  window.MigrantIA = { test: (txt) => callAgent(txt || "Hola, prueba de conexión", "").then((r) => { console.log(r); return r; }), parseMeta };
 })();
