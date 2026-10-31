@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>MigrantIA · Orientación consular</title>
+  <meta name="description" content="MigrantIA: orientación consular de emergencia para personas mexicanas en Estados Unidos. Español, English, Português." />
+  <meta name="theme-color" content="#14322B" />
+  <meta name="referrer" content="no-referrer" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%2314322B'/%3E%3Cpath d='M24 9l13 5v9c0 8-6 14-13 17-7-3-13-9-13-17v-9z' fill='none' stroke='%23F4EDE2' stroke-width='3.5' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <a class="skip" href="#chat">Ir al chat</a>
+
+  <!-- ===== Encabezado ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" data-icon="shield"></span>
+      <span class="brand-name">Migrant<b>IA</b></span>
+    </div>
+    <div class="lang" role="group" aria-label="Idioma / Language / Idioma">
+      <button data-lang="es" aria-pressed="true">ES</button>
+      <button data-lang="en" aria-pressed="false">EN</button>
+      <button data-lang="pt" aria-pressed="false">PT</button>
+    </div>
+    <button class="exit" id="quickExit" title="Esc ×2">
+      <span data-icon="exit"></span><span data-i18n="quickExit">Salir rápido</span>
+    </button>
+  </header>
+
+  <main>
+    <!-- ===== Héroe + botón de emergencia ===== -->
+    <section class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">Hackathon IA para el Bien Común · IBERO</p>
+        <h1 data-i18n="tagline">Orientación consular para personas mexicanas en EE. UU.</h1>
+        <div class="hero-langs" aria-hidden="true">Español · English · Português</div>
+      </div>
+      <button class="sos" id="sosBtn" aria-haspopup="dialog">
+        <span class="sos-ring"></span>
+        <span class="sos-icon" data-icon="siren"></span>
+        <span class="sos-label" data-i18n="sos">EMERGENCIA</span>
+        <span class="sos-sub" data-i18n="sosSub">Toca para pedir ayuda</span>
+      </button>
+    </section>
+
+    <div class="layout">
+      <div class="col-left">
+        <!-- ===== Casos con pictogramas ===== -->
+        <section class="card" id="cases">
+          <h2 data-i18n="casesTitle">¿Qué te está pasando?</h2>
+          <p class="hint" data-i18n="casesHint">Toca el dibujo que se parece a tu situación.</p>
+          <div class="case-grid" id="caseGrid"></div>
+          <div class="case-panel" id="casePanel" hidden></div>
+        </section>
+
+        <!-- ===== Estados ===== -->
+        <section class="card" id="states">
+          <h2 data-i18n="stateTitle">¿En qué estado estás?</h2>
+          <p class="hint" data-i18n="stateHint">Te mostramos el consulado más cercano.</p>
+          <div class="state-chips" id="stateChips"></div>
+          <div class="consulates" id="consulates"></div>
+          <a class="other-state" id="otherState" href="tel:+15206237874">
+            <span data-icon="consulate"></span><span data-i18n="otherState">¿Otro estado? Llama al CIAM</span> · 1-520-623-7874
+          </a>
+        </section>
+
+        <!-- ===== Pictogramas: cómo pedir ayuda ===== -->
+        <section class="card" id="picto">
+          <h2 data-i18n="pictoTitle">¿No lees bien? Mira los dibujos</h2>
+          <p class="hint" data-i18n="pictoHint">Así se pide ayuda por teléfono.</p>
+          <ol class="steps">
+            <li><span class="step-n">1</span><span class="step-ico" data-icon="keypad"></span><b class="big911">911</b><span data-i18n="step1">Marca 9 · 1 · 1</span></li>
+            <li><span class="step-n">2</span><span class="step-ico" data-icon="speak"></span><span data-i18n="step2">Di: "SPANISH"</span></li>
+            <li><span class="step-n">3</span><span class="step-ico" data-icon="pin"></span><span data-i18n="step3">Di dónde estás</span></li>
+            <li><span class="step-n">4</span><span class="step-ico" data-icon="wait"></span><span data-i18n="step4">No cuelgues</span></li>
+          </ol>
+          <div class="helpcard-preview">
+            <div>
+              <h3 data-i18n="cardTitle">Tarjeta para mostrar</h3>
+              <p class="hint" data-i18n="cardHint">Enséñala a cualquier persona: policía, enfermera, vecino.</p>
+            </div>
+            <button class="btn btn-dark" id="openCard"><span data-icon="card"></span><span data-i18n="cardOpen">Abrir tarjeta en grande</span></button>
+          </div>
+        </section>
+      </div>
+
+      <!-- ===== Chat con el agente de Saptiva ===== -->
+      <div class="col-right">
+        <section class="card chat" id="chat" aria-live="polite">
+          <div class="chat-head">
+            <div class="chat-avatar" data-icon="shield"></div>
+            <div>
+              <h2 data-i18n="chatTitle">Habla con MigrantIA</h2>
+              <p class="hint" data-i18n="chatHint">Escribe tu pregunta. No pongas tu dirección exacta ni tu nombre completo.</p>
+            </div>
+            <button class="icon-btn" id="clearChat" data-i18n-title="clear" title="Borrar conversación"><span data-icon="trash"></span></button>
+          </div>
+          <div class="level-banner" id="levelBanner" hidden></div>
+          <div class="messages" id="messages"></div>
+          <form class="composer" id="composer" autocomplete="off">
+            <button type="button" class="icon-btn" id="micBtn" data-i18n-title="mic" title="Hablar"><span data-icon="mic"></span></button>
+            <textarea id="input" rows="1" data-i18n-ph="placeholder" placeholder="Escribe aquí…" aria-label="Mensaje"></textarea>
+            <button type="submit" class="send-btn" data-i18n-title="send" title="Enviar"><span data-icon="send"></span></button>
+          </form>
+          <div class="conn" id="conn"><span class="dot"></span><span id="connText">Saptiva Studio</span></div>
+        </section>
+      </div>
+    </div>
+
+    <footer class="foot">
+      <p data-i18n="privacy">Esta página no guarda tus mensajes.</p>
+      <p class="foot-small">MigrantIA · Hackathon de IA para el Bien Común · IBERO CDMX × Saptiva AI · 2026</p>
+    </footer>
+  </main>
+
+  <!-- Botón de emergencia fijo (móvil) -->
+  <button class="sos-float" id="sosFloat" aria-haspopup="dialog"><span data-icon="siren"></span><span data-i18n="sos">EMERGENCIA</span></button>
+
+  <!-- ===== Modal de emergencia ===== -->
+  <div class="modal" id="sosModal" role="dialog" aria-modal="true" aria-labelledby="sosTitle" hidden>
+    <div class="modal-box sos-box">
+      <button class="modal-close" data-close aria-label="Cerrar">×</button>
+      <h2 id="sosTitle" data-i18n="sosTitle">¿Estás en peligro ahora?</h2>
+      <p class="hint" data-i18n="sosLead">Toca un botón para llamar. Es gratis.</p>
+      <div class="hotlines" id="hotlines"></div>
+      <div class="sos-actions">
+        <button class="btn btn-dark" id="sosCard"><span data-icon="card"></span><span data-i18n="showCard">Mostrar tarjeta de ayuda</span></button>
+        <button class="btn btn-ghost" id="sosSpeak"><span data-icon="speaker"></span><span data-i18n="listen">Escuchar</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Tarjeta de ayuda a pantalla completa ===== -->
+  <div class="modal helpcard" id="cardModal" role="dialog" aria-modal="true" hidden>
+    <button class="modal-close light" data-close aria-label="Close">×</button>
+    <div class="helpcard-body" id="helpCardBody"></div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
